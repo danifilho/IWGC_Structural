@@ -10,16 +10,16 @@
 # Configuration for RepeatModeler script
 
 #Setting species name
-SPECIES_NAME="Arabidopsis_thaliana"
+SPECIES_NAME="Arabidopsis_thaliana.Col-PEK1.5"
 
 # Path to RepeatModeler
 REPEATMODELER_PATH="/opt/software/RepeatModeler/2.0.2a-foss-2019b/RepeatModeler"
 
 # Name of the database
-DATABASE_NAME="{$SPECIES_NAME}_DB"
+DATABASE_NAME="${SPECIES_NAME}_DB"
 
 # Name of the fasta file
-FASTA_FILE="Arabidopsis_thaliana.fasta"
+FASTA_FILE="Arabidopsis_thaliana.Col-PEK1.5.fasta"
 
 # Number of parallel jobs
 NUM_JOBS_REPEAT=36
@@ -39,8 +39,8 @@ ISOSEQ3_READS="AraTh_Leaves_SRR14584396.fastq"
 PBMM2_OUTPUT=$SPECIES_NAME-aligned.bam
 ISOSEQ3_OUTPUT=$SPECIES_NAME.collapsed.gff
 
-#modify by 20/11/2023
-./folders.sh 
-./pipeline.sh $FASTA_FILE $DATABASE_NAME $NUM_JOBS_REPEAT $RMODELER_OUTPUT $RMASKER_OUTPUT $BEDTOOLS_OUTPUT $ISOSEQ3_READS $PBMM2_OUTPUT $ISOSEQ3_OUTPUT
+cd /mnt/gs21/scratch/cuttilua/BASF/Col_PEK1.5_assembly_and_annotation/Mapping
+source /mnt/home/cuttilua/anaconda3/bin/activate
+conda activate basf
 
-./pipeline.sh 
+./pipeline2.sh $FASTA_FILE $DATABASE_NAME $NUM_JOBS_REPEAT $RMODELER_OUTPUT $RMASKER_OUTPUT $BEDTOOLS_OUTPUT $ISOSEQ3_READS $PBMM2_OUTPUT $ISOSEQ3_OUTPUT
