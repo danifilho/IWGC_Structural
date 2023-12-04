@@ -39,8 +39,11 @@ ISOSEQ3_READS="AraTh_Leaves_SRR14584396.fastq"
 PBMM2_OUTPUT=$SPECIES_NAME-aligned.bam
 ISOSEQ3_OUTPUT=$SPECIES_NAME.collapsed.gff
 
-cd /mnt/gs21/scratch/cuttilua/BASF/Col_PEK1.5_assembly_and_annotation/Mapping
+#-------------------------------- maker
+PROTEIN_FILE="Canola.PROTEINS.faa"
+
+cd /mnt/gs21/scratch/cuttilua/BASF/Col_PEK1.5_assembly_and_annotation/Maker
 source /mnt/home/cuttilua/anaconda3/bin/activate
 conda activate basf
 
-./pipeline2.sh $FASTA_FILE $DATABASE_NAME $NUM_JOBS_REPEAT $RMODELER_OUTPUT $RMASKER_OUTPUT $BEDTOOLS_OUTPUT $ISOSEQ3_READS $PBMM2_OUTPUT $ISOSEQ3_OUTPUT
+./pipeline2.sh $FASTA_FILE $DATABASE_NAME $NUM_JOBS_REPEAT $RMODELER_OUTPUT $RMASKER_OUTPUT $BEDTOOLS_OUTPUT $ISOSEQ3_READS $PBMM2_OUTPUT $ISOSEQ3_OUTPUT $PROTEIN_FILE
