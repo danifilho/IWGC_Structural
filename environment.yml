@@ -1,0 +1,5 @@
+name: maker
+channels:
+  - bioconda
+dependencies:
+  - maker
