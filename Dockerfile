@@ -1,31 +1,21 @@
-# Usando a imagem base do Ubuntu 
-FROM ubuntu:latest AS base-ubuntu
+# Use a imagem base do Ubuntu
+FROM ubuntu:latest
 
-WORKDIR /myrepo
+# Atualize o sistema e instale as dependências necessárias
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y git build-essential wget cpanminus zlib1g-dev libexpat1-dev
 
-# Atualizando a lista de pacotes e instalando o 'git' e o 'make'
-RUN apt-get update && apt-get install -y git make build-essential wget git autoconf libgsl-dev libboost-all-dev libsuitesparse-dev liblpsolve55-dev libsqlite3-dev libmysql++-dev libbamtools-dev zlib1g-dev && \
-    git clone https://github.com/Gaius-Augustus/Augustus.git && \
-    cd Augustus && \
-    make augustus
+# Clone o repositório do Maker
+RUN git clone https://github.com/Yandell-Lab/maker.git
 
-# Usando a imagem base do miniconda 
-FROM continuumio/miniconda3
+# Mude para o diretório /src do Maker
+WORKDIR /maker/src/
 
-# Criando um diretório de trabalho
-WORKDIR /app
+# Instale o Maker
+RUN cpanm Thread::Queue && \
+    perl Build.PL && \
+    ./Build installdeps && \
+    ./Build install
 
-# Copiando o repositório clonado da imagem base-ubuntu
-COPY --from=base-ubuntu /myrepo/Augustus/bin/augustus /usr/local/bin/augustus
-
-# Copiando o arquivo environment.yml para o contêiner
-COPY environment.yml .
-
-# Usando o conda para instalar o Maker
-RUN conda env create -f environment.yml && conda clean -a
-
-# Ativando o ambiente conda
-RUN conda init bash
-
-# Definindo o comando para iniciar o Maker
-CMD ["maker"]
+ENV PATH /maker/bin:$PATH
