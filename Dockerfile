@@ -1,21 +1,34 @@
-# Use a imagem base do Ubuntu
-FROM ubuntu:latest
+# Base Image
+FROM continuumio/anaconda3
 
-# Atualize o sistema e instale as dependências necessárias
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y git build-essential wget cpanminus zlib1g-dev libexpat1-dev
+# Software Version
+LABEL maker="2.31.10"
 
-# Clone o repositório do Maker
-RUN git clone https://github.com/Yandell-Lab/maker.git
+# Description
+LABEL description="MAKER is a portable and easily configurable genome annotation pipeline."
 
-# Mude para o diretório /src do Maker
-WORKDIR /maker/src/
+# Update conda
+RUN conda update -n base -c defaults conda -y
 
-# Instale o Maker
-RUN cpanm Thread::Queue && \
-    perl Build.PL && \
-    ./Build installdeps && \
-    ./Build install
+# Create a new conda environment with Python 2.7
+RUN conda create -n maker_env python=2.7 -y
 
-ENV PATH /maker/bin:$PATH
+# Activate the new environment and install maker
+RUN echo "source activate maker_env" > ~/.bashrc
+ENV PATH /opt/conda/envs/maker_env/bin:$PATH
+
+# Install h5py
+RUN /bin/bash -c "source activate maker_env && conda config --add channels conda-forge"
+RUN /bin/bash -c "source activate maker_env && conda install -c anaconda h5py -y"
+RUN /bin/bash -c "source activate maker_env && conda install -c anaconda gcc_linux-64 -y"
+RUN /bin/bash -c "source activate maker_env && conda install -c anaconda gfortran_linux-64 -y"
+RUN /bin/bash -c "source activate maker_env && conda install -c anaconda gxx_linux-64 -y"
+
+# Install maker
+RUN /bin/bash -c "source activate maker_env && conda install -c bioconda maker -y"
+
+# Set the working directory in the container to /app
+WORKDIR /app
+
+# Add the current directory contents into the container at /app
+ADD . /app
