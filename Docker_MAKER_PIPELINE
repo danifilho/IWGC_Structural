@@ -9,7 +9,7 @@ FASTA_FILE=$1 #Input
 ISOSEQ3_OUTPUT=$2
 RMODELER_OUTPUT=$3
 PROTEIN_FILE=$4 #input
-
+VOLUME_NAME=$5
 
 
 #--------------------------- REPEAT MODELER
@@ -79,7 +79,6 @@ rm "${FASTA_FILE}.fai"
 transcripts="${PWD}/${chr}/${chr}_transcripts.fa"
 
 gffread -g ${FASTA_FILE} -w ${transcripts} ${chr}.gff
-
 
 ## Now add maker ctl scripts (Maybe we can create separate files to acess maker documentation, I'll talk with Dr Patterson and Luan)
 
@@ -199,18 +198,18 @@ evmab:fgenesh=10 #weight for fgenesh sourced predictions
 evmab:genemark=7 #weight for genemark sourced predictions 
 (iwgcfa001) [hallna12@watership makerp]$ cat maker_exe.ctl
 #-----Location of Executables Used by MAKER/EVALUATOR
-makeblastdb=/Users/dasilvaf/miniforge3/bin/makeblastdb #location of NCBI+ makeblastdb executable
-blastn=/Users/dasilvaf/miniforge3/bin/blastn #location of NCBI+ blastn executable
-blastx=/Users/dasilvaf/miniforge3/bin/blastx #location of NCBI+ blastx executable
-tblastx=/Users/dasilvaf/miniforge3/bin/tblastx #location of NCBI+ tblastx executable
+makeblastdb=/opt/conda/envs/maker_env/bin/makeblastdb #location of NCBI+ makeblastdb executable
+blastn=/opt/conda/envs/maker_env/bin/blastn #location of NCBI+ blastn executable
+blastx=/opt/conda/envs/maker_env/bin/blastx #location of NCBI+ blastx executable
+tblastx=/opt/conda/envs/maker_env/bin/tblastx #location of NCBI+ tblastx executable
 formatdb=/opt/software/BLAST/2.2.26/bin/formatdb #location of NCBI formatdb executable
 blastall=/opt/software/BLAST/2.2.26/bin/blastall #location of NCBI blastall executable
 xdformat= #location of WUBLAST xdformat executable
 blasta= #location of WUBLAST blasta executable
 prerapsearch= #location of prerapsearch executable
 rapsearch= #location of rapsearch executable
-RepeatMasker=/Users/dasilvaf/Genomic_Annotation/Dependencies/RepeatMasker//RepeatMasker #location of RepeatMasker executable
-exonerate=/Users/dasilvaf/miniforge3/bin/exonerate
+RepeatMasker=/opt/conda/envs/maker_env/bin/RepeatMasker #location of RepeatMasker executable
+exonerate=/opt/conda/envs/maker_env/bin/exonerate
 
 #-----Ab-initio Gene Prediction Algorithms
 snap=/opt/software/SNAP/1.0/snap #location of snap executable
@@ -219,7 +218,7 @@ gmhmmp= #location of prokaryotic genemark executable
 augustus= #location of augustus executable
 fgenesh= #location of fgenesh executable
 evm=/opt/software/EvidenceModeler/1.1.1/evidence_modeler.pl #location of EvidenceModeler executable
-tRNAscan-SE=/Users/dasilvaf/miniforge3/bin/tRNAscan-SE #location of trnascan executable
+tRNAscan-SE=/opt/conda/envs/maker_env/bin/tRNAscan-SE #location of trnascan executable
 snoscan=/opt/software/snoscan/1.0/snoscan #location of snoscan executable
 
 #-----Other Algorithms
@@ -230,7 +229,7 @@ probuild= #location of probuild executable (required for genemark)
 
 printf "\
 #-----Genome (these are always required)
-genome=${fasta} #genome sequence (fasta file or fasta embeded in GFF3 file)
+genome="/data/${chr}/${chr}.fasta" #genome sequence (fasta file or fasta embeded in GFF3 file)
 organism_type=eukaryotic #eukaryotic or prokaryotic. Default is eukaryotic
 
 #-----Re-annotation Using MAKER Derived GFF3
@@ -244,19 +243,19 @@ pred_pass=0 #use ab-initio predictions in maker_gff: 1 = yes, 0 = no
 other_pass=0 #passthrough anyything else in maker_gff: 1 = yes, 0 = no
 
 #-----EST Evidence (for best results provide a file for at least one)
-est=${transcripts} #set of ESTs or assembled mRNA-seq in fasta format
+est="/data/${chr}/${chr}_transcripts.fa" #set of ESTs or assembled mRNA-seq in fasta format
 altest= #EST/cDNA sequence file in fasta format from an alternate organism
 est_gff= #aligned ESTs or mRNA-seq from an external GFF3 file
 altest_gff= #aligned ESTs from a closly relate species in GFF3 format
 
 #-----Protein Homology Evidence (for best results provide a file for at least one)
-protein="${PWD}/${PROTEIN_FILE}" #protein sequence file in fasta format (i.e. from mutiple organisms)
+protein="/data/${PROTEIN_FILE}" #protein sequence file in fasta format (i.e. from mutiple organisms)
 protein_gff=  #aligned protein homology evidence from an external GFF3 file
 
 #-----Repeat Masking (leave values blank to skip repeat masking)
 model_org= #select a model organism for RepBase masking in RepeatMasker
-rmlib="${PWD}/${RMODELER_OUTPUT}" #provide an organism specific repeat library in fasta format for RepeatMasker
-repeat_protein=/Users/dasilvaf/Genomic_Annotation/Dependencies/maker/data/te_proteins.fasta #provide a fasta file of transposable element proteins for RepeatRunner
+rmlib="/data/${RMODELER_OUTPUT}" #provide an organism specific repeat library in fasta format for RepeatMasker
+repeat_protein=/app/maker-master/data/te_proteins.fasta #provide a fasta file of transposable element proteins for RepeatRunner
 rm_gff= #pre-identified repeat elements from an external GFF3 file
 prok_rm=0 #forces MAKER to repeatmask prokaryotes (no reason to change this), 1 = yes, 0 = no
 softmask=1 #use soft-masking rather than hard-masking in BLAST (i.e. seg and dust filtering)
@@ -306,7 +305,7 @@ correct_est_fusion=0 #limits use of ESTs in annotation to avoid fusion genes
 tries=2 #number of times to try a contig if there is a failure for some reason
 clean_try=0 #remove all data from previous run before retrying, 1 = yes, 0 = no
 clean_up=0 #removes theVoid directory with individual analysis files, 1 = yes, 0 = no
-TMP="${PWD}/${chr}/tmp"#specify a directory other than the system default temporary directory for temporary files
+TMP="/data/${chr}/tmp"#specify a directory other than the system default temporary directory for temporary files
 " >${chr}/maker_opts.ctl
 
 done
@@ -315,7 +314,8 @@ done
 
 while read i
 do
-cd ${i}
-maker maker_opts.ctl maker_bopts.ctl maker_exe.ctl
-cd -
+  docker run -v "$VOLUME_NAME":/data dantest15 maker /data/${i}/maker_opts.ctl /data/${i}/maker_bopts.ctl /data/${i}/maker_exe.ctl
 done < chrs.list
+
+echo "Current directory: $(pwd)"
+ls -l /data
