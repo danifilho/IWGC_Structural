@@ -6,47 +6,45 @@
 
 
 FASTA_FILE=$1 #Input
-ISOSEQ3_OUTPUT=$2
-RMODELER_OUTPUT=$3
-PROTEIN_FILE=$4 #input
-VOLUME_NAME=$5
-
+VOLUME_NAME=$2 #Input
+DATABASE_NAME=$3
+NUM_JOBS_REPEAT=$4 #Input
+RMODELER_OUTPUT=$5
+RMASKER_OUTPUT=$6
+BEDTOOLS_OUTPUT=$7
+ISOSEQ3_READS=$8 #Input
+PBMM2_OUTPUT=$9
+ISOSEQ3_OUTPUT=${10}
+PROTEIN_FILE=${11} #input
+SPECIES_ABBREVIATION=${12} #Input
 
 #--------------------------- REPEAT MODELER
 # Use the database name and fasta file from the configuration file
-#docker run -v /Users/dasilvaf/Genomic_Annotation:/data dfam/tetools:latest BuildDatabase -name /data/$DATABASE_NAME /data/$FASTA_FILE
+docker run -v "$VOLUME_NAME":/data dfam/tetools:latest BuildDatabase -name /data/$DATABASE_NAME /data/$FASTA_FILE
 
 # Use the database name and number of jobs (threads) from the configuration file
-#docker run -v /Users/dasilvaf/Genomic_Annotation:/data dfam/tetools:latest RepeatModeler -database /data/$DATABASE_NAME -threads $NUM_JOBS_REPEAT -LTRStruct
+docker run -v "$VOLUME_NAME":/data dfam/tetools:latest RepeatModeler -database /data/$DATABASE_NAME -threads $NUM_JOBS_REPEAT -LTRStruct
 
 #RepeatModeler -database $DATABASE_NAME -threads $NUM_JOBS_REPEAT -LTRStruct &&
 
 #---------------------------- REPEAT MASKER
 # Use the output files as input for the next command
-#docker run -v /Users/dasilvaf/Genomic_Annotation:/data dfam/tetools:latest RepeatMasker -gff -a -pa 16 -u /data/$RMODELER_OUTPUT /data/$FASTA_FILE
+docker run -v "$VOLUME_NAME":/data dfam/tetools:latest RepeatMasker -gff -a -pa 16 -u /data/$RMODELER_OUTPUT /data/$FASTA_FILE
 #RepeatMasker -gff -a -pa 20 -u $RMODELER_OUTPUT $FASTA_FILE &&
 
 #----------------------------- BEDTOOLS
-#docker run -v /Users/dasilvaf/Genomic_Annotation:/data pegi3s/bedtools:latest bedtools maskfasta -fi /data/$FASTA_FILE -bed /data/$RMASKER_OUTPUT -soft -fo /data/$BEDTOOLS_OUTPUT
+docker run -v "$VOLUME_NAME":/data pegi3s/bedtools:latest bedtools maskfasta -fi /data/$FASTA_FILE -bed /data/$RMASKER_OUTPUT -soft -fo /data/$BEDTOOLS_OUTPUT
 ##bedtools maskfasta -fi $FASTA_FILE -bed $RMASKER_OUTPUT -soft -fo $BEDTOOLS_OUTPUT &&
 
 #----------------------------- MAPPING
 #Loading modules here to separate fron the other that doesn't depend to the environment
-#docker run -v /Users/dasilvaf/Genomic_Annotation:/data greensii/isoseq3 pbmm2 align --preset ISOSEQ -O6,24 -B4 --sort /data/$ISOSEQ3_READS /data/$BEDTOOLS_OUTPUT /data/$PBMM2_OUTPUT -j 8
+docker run -v "$VOLUME_NAME":/data greensii/isoseq3 pbmm2 align --preset ISOSEQ -O6,24 -B4 --sort /data/$ISOSEQ3_READS /data/$BEDTOOLS_OUTPUT /data/$PBMM2_OUTPUT -j 8
 #pbmm2 align --preset ISOSEQ -O6,24 -B4 --sort $ISOSEQ3_READS $BEDTOOLS_OUTPUT $PBMM2_OUTPUT -j 12
 
-#docker run -v /Users/dasilvaf/Genomic_Annotation:/data greensii/isoseq3 isoseq3 collapse --do-not-collapse-extra-5exons --min-aln-coverage 0.9 --min-aln-identity 0.95  /data/$PBMM2_OUTPUT /data/$ISOSEQ3_OUTPUT
-#docker run greensii/isoseq3 /bin/bash -c isoseq3 collapse --do-not-collapse-extra-5exons --min-aln-coverage 0.9 --min-aln-identity 0.95  /data/TEST2-aligned.bam /data/ISOTEST1.collapsed.gff
+docker run -v "$VOLUME_NAME":/data greensii/isoseq3 isoseq3 collapse --do-not-collapse-extra-5exons --min-aln-coverage 0.9 --min-aln-identity 0.95  /data/$PBMM2_OUTPUT /data/$ISOSEQ3_OUTPUT
+docker run greensii/isoseq3 /bin/bash -c isoseq3 collapse --do-not-collapse-extra-5exons --min-aln-coverage 0.9 --min-aln-identity 0.95  /data/TEST2-aligned.bam /data/ISOTEST1.collapsed.gff
 
 #----------------------------- MAKER
-## files that get modified
-
-##==============================================
-## files that don't get modified
-# repeat_lib=$RMODELER_OUTPUT
-# protein=$PROTEIN_FILE
-##==============================================
-
 #Creating choromosome list
 #grep "^>" file1.Col-PEK1.5_Chr1-5_20220523.fasta | tee chrs.list
 #sed -i 's/>//g' chrs.list
@@ -317,5 +315,32 @@ do
   docker run -v "$VOLUME_NAME":/data dantest15 maker /data/${i}/maker_opts.ctl /data/${i}/maker_bopts.ctl /data/${i}/maker_exe.ctl
 done < chrs.list
 
-echo "Current directory: $(pwd)"
-ls -l /data
+#----------------------- FILTERING
+
+GLOBAL_GFF="${SPECIES_ABBREVIATION}.v01.gff"
+EXCLUDE_GFF="${SPECIES_ABBREVIATION}.exclude.gff"
+UNIQ_GFF="${SPECIES_ABBREVIATION}.uniq.gff"
+FINAL_GFF="${SPECIES_ABBREVIATION}.v2.gff"
+
+# # Create global gff
+printf "##gff-version 3\n" > "${GLOBAL_GFF}"
+tail -n +2 */*maker.output/*_datastore/*/*/*/*gff | awk -F"\t" 'NF==9 && ($3=="gene" || $3 =="CDS" || $3 =="mRNA" || $3 =="exon" || $3 == "five_prime_UTR" || $3 == "three_prime_UTR" || $3 =="tRNA" )' >> "${GLOBAL_GFF}"
+
+# # # # # # # Extract proteins and index
+docker run -v "$VOLUME_NAME":/data biodepot/gffread gffread -S -y "/data/${SPECIES_ABBREVIATION}.prots" -g "/data/${FASTA_FILE}" "/data/${GLOBAL_GFF}"
+docker run -v "$VOLUME_NAME":/data dbest/samtools:v1.19.2 samtools faidx "/data/${SPECIES_ABBREVIATION}.prots"
+
+# # # Find and process the smallest value
+MENOR_VALOR=$(sort -r -k2 -n "${SPECIES_ABBREVIATION}.prots.fai" | cut -f -2 | grep "est2genome" | tail -n 1)
+echo "$MENOR_VALOR"
+VALUE=$(echo "$MENOR_VALOR" | cut -f2)
+echo "$VALUE"
+sort -k2 -n AraTh.prots.fai | cut -f -2 | grep protein2genome | awk -v minor="$VALUE" '$2 < minor {print $1}' "${SPECIES_ABBREVIATION}.prots.fai" | sed 's/-mRNA-[0-9]*//' | sort | uniq > exclude.list
+
+# # # # # # Process the rest of your script
+printf "#gff-version 3\n" > "${PWD}/${EXCLUDE_GFF}"
+docker run -v "$VOLUME_NAME":/data python sh -c "pip install gff3 && python /data/gff_filter.py -e /data/exclude.list -g /data/AraTh.v01.gff >> /data/AraTh.exclude.gff"
+
+docker run -v "$VOLUME_NAME":/data dantestpy1 sh -c "python /data/validate_gff.py --gff /data/${EXCLUDE_GFF} > ${UNIQ_GFF}"
+
+docker run -v "$VOLUME_NAME":/data dantestpy2 sh -c "python /data/renameGff.py -g /data/${UNIQ_GFF} -t /data/${SPECIES_ABBREVIATION} > ${FINAL_GFF}"
