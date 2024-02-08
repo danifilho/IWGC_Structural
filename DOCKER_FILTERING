@@ -1,33 +1,122 @@
-#!/bin/bash
+species_abbreviation = "AraTh"
+fasta_file = "file1.Col-PEK1.5_Chr1-5_20220523.fasta"
+global_gff = f"{species_abbreviation}.v01.gff"
+exclude_list = "exclude.list"
+exclude_gff = f"{species_abbreviation}.exclude.gff"
+uniq_gff = f"{species_abbreviation}.uniq.gff"
+final_gff = f"{species_abbreviation}.v2.gff"
+volume_name = "/Users/danifilho01/BASF"
 
-SPECIES_ABBREVIATION="AraTh"
-FASTA_FILE="file1.Col-PEK1.5_Chr1-5_20220523.fasta"
-GLOBAL_GFF="${SPECIES_ABBREVIATION}.v01.gff"
-EXCLUDE_LIST="exclude.list"
-EXCLUDE_GFF="${SPECIES_ABBREVIATION}.exclude.gff"
-UNIQ_GFF="${SPECIES_ABBREVIATION}.uniq.gff"
-FINAL_GFF="${SPECIES_ABBREVIATION}.v2.gff"
-VOLUME_NAME="/Users/dasilvaf/Downloads/MAKER_OUTPUT"
+rule all:
+    input:
+        final_gff
 
-# # Create global gff
-printf "##gff-version 3\n" > "${GLOBAL_GFF}"
-tail -n +2 */*maker.output/*_datastore/*/*/*/*gff | awk -F"\t" 'NF==9 && ($3=="gene" || $3 =="CDS" || $3 =="mRNA" || $3 =="exon" || $3 == "five_prime_UTR" || $3 == "three_prime_UTR" || $3 =="tRNA" )' >> "${GLOBAL_GFF}"
+rule create_global_gff:
+    output:
+        global_gff
+    shell:
+        """
+        printf "##gff-version 3\n" > {output}
+        tail -n +2 */*maker.output/*_datastore/*/*/*/*gff | awk -F"\t" 'NF==9 && ($3=="gene" || $3 =="CDS" || $3 =="mRNA" || $3 =="exon" || $3 == "five_prime_UTR" || $3 == "three_prime_UTR" || $3 =="tRNA" )' >> {output}
+        """
 
-# # # # # # # Extract proteins and index
-docker run -v "$VOLUME_NAME":/data biodepot/gffread gffread -S -y "/data/${SPECIES_ABBREVIATION}.prots" -g "/data/${FASTA_FILE}" "/data/${GLOBAL_GFF}"
-docker run -v "$VOLUME_NAME":/data dbest/samtools:v1.19.2 samtools faidx "/data/${SPECIES_ABBREVIATION}.prots"
+rule extract_proteins_and_index:
+    output:
+        f"{species_abbreviation}.prots.fai"
+    params:
+        volume_name = volume_name
+    shell:
+        """
+        echo "List files before execution:"
+        ls -l "{params.volume_name}"
+        ls -l "{params.volume_name}/{species_abbreviation}.v01.gff"
+        echo "Executing docker commands:"
+        docker run -v {params.volume_name}:/data biodepot/gffread gffread -S -y "/data/{species_abbreviation}.prots" -g "/data/{fasta_file}" "/data/{species_abbreviation}.v01.gff"
+        docker run -v {params.volume_name}:/data dbest/samtools:v1.19.2 samtools faidx "/data/{species_abbreviation}.prots"
+        echo "List files after execution:"
+        ls -l "{params.volume_name}"
+        ls -l "{params.volume_name}/{species_abbreviation}.prots.fai"
+        cat "{params.volume_name}/{species_abbreviation}.prots.fai"  # Add this line for debugging
+        echo "Command completed successfully"
+        """
 
-# # # Find and process the smallest value
-MENOR_VALOR=$(sort -r -k2 -n "${SPECIES_ABBREVIATION}.prots.fai" | cut -f -2 | grep "est2genome" | tail -n 1)
-echo "$MENOR_VALOR"
-VALUE=$(echo "$MENOR_VALOR" | cut -f2)
-echo "$VALUE"
-sort -k2 -n AraTh.prots.fai | cut -f -2 | grep protein2genome | awk -v minor="$VALUE" '$2 < minor {print $1}' "${SPECIES_ABBREVIATION}.prots.fai" | sed 's/-mRNA-[0-9]*//' | sort | uniq > exclude.list
+rule create_exclude_list:
+    output:
+        "exclude.list"
+    shell:
+        """
+        # Add commands to create exclude.list file
+        touch {output}
+        """
 
-# # # # # # Process the rest of your script
-printf "#gff-version 3\n" > "${PWD}/${EXCLUDE_GFF}"
-docker run -v "$VOLUME_NAME":/data python sh -c "pip install gff3 && python /data/gff_filter.py -e /data/exclude.list -g /data/AraTh.v01.gff >> /data/AraTh.exclude.gff"
+rule find_and_process_smallest_value:
+    input:
+        arath_prots_fai=f"{volume_name}/{species_abbreviation}.prots.fai",
+        global_prots_fai="AraTh.prots.fai",
+        exclude_list="exclude.list"
+    output:
+        exclude_list=exclude_list
+    params:
+        prots_fai=lambda wildcards: wildcards.arath_prots_fai
+    run:
+        """
+        echo "Checking file existence for {species_abbreviation}.prots.fai:"
+        ls -l "{input.arath_prots_fai}"
+        cat "{input.arath_prots_fai}"
 
-docker run -v "$VOLUME_NAME":/data dantestpy1 sh -c "python /data/validate_gff.py --gff /data/${EXCLUDE_GFF} > ${UNIQ_GFF}"
+        if [ ! -e "{input.arath_prots_fai}" ]; then
+            echo "Error: File not found - {input.arath_prots_fai}"
+            exit 1
+        fi
 
-docker run -v "$VOLUME_NAME":/data dantestpy2 sh -c "python /data/renameGff.py -g /data/${UNIQ_GFF} -t /data/${SPECIES_ABBREVIATION} > ${FINAL_GFF}"
+        echo "Checking file existence for AraTh.prots.fai:"
+        ls -l "{input.global_prots_fai}"
+        cat "{input.global_prots_fai}"
+
+        if [ ! -e "{input.global_prots_fai}" ]; then
+            echo "Error: File not found - {input.global_prots_fai}"
+            exit 1
+        fi
+
+        echo "Checking file existence for exclude.list:"
+        ls -l "{input.exclude_list}"
+        cat "{input.exclude_list}"
+
+        if [ ! -e "{input.exclude_list}" ]; then
+            echo "Error: File not found - {input.exclude_list}"
+            exit 1
+        fi
+
+        echo "Sorting file:"
+        sort -k2 -n "{params.prots_fai}" > sorted_prots.fai
+
+        echo "Finding smallest value:"
+        MENOR_VALOR=$(sort -r -k2 -n sorted_prots.fai | cut -f -2 | grep "est2genome" | tail -n 1)
+        echo "$MENOR_VALOR"
+
+        VALUE=$(echo "$MENOR_VALOR" | cut -f2)
+        echo "$VALUE"
+
+        echo "Filtering and processing:"
+        sort -k2 -n sorted_prots.fai | cut -f -2 | grep protein2genome | awk -v minor="$VALUE" '{{print $1}}' | sed 's/-mRNA-[0-9]*//' | sort | uniq > "{output.exclude_list}"
+
+        rm sorted_prots.fai
+        """
+
+rule process_script:
+    input:
+        prots_fai = f"{species_abbreviation}.prots.fai",
+        exclude_list = exclude_list
+    output:
+        exclude_gff = f"{species_abbreviation}.exclude.gff",
+        uniq_gff = f"{species_abbreviation}.uniq.gff",
+        final_gff = f"{species_abbreviation}.v2.gff"
+    params:
+        volume_name = volume_name
+    shell:
+        """
+        printf "#gff-version 3\n" > {output.exclude_gff}
+        docker run -v {params.volume_name}:/data python sh -c "pip install gff3 && python /data/gff_filter.py -e /data/{input.exclude_list} -g /data/{global_gff} >> /data/{output.exclude_gff}"
+        docker run -v {params.volume_name}:/data dantestpy sh -c "python /data/validate_gff.py --gff /data/{output.exclude_gff} > {output.uniq_gff}"
+        docker run -v {params.volume_name}:/data dantestpy sh -c "python /data/renameGff.py -g /data/{output.uniq_gff} -t /data/{species_abbreviation} > {output.final_gff}"
+        """
