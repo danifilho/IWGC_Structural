@@ -70,3 +70,23 @@ rule isoseq3:
         isoseq3_output=config["isoseq3_output"]
     shell:
         "docker run -v \"{params.volume_name}\":/data greensii/isoseq3 isoseq3 collapse --do-not-collapse-extra-5exons --min-aln-coverage 0.9 --min-aln-identity 0.95  /data/{input.pbmm2_output} /data/{params.isoseq3_output}"
+
+#---------------- filtering working
+
+rule process_script:
+    input:
+        prots_fai = f"{species_abbreviation}.prots.fai",
+        exclude_list = "exclude.list"
+    output:
+        exclude_gff = f"{species_abbreviation}.exclude.gff",
+        uniq_gff = f"{species_abbreviation}.uniq.gff",
+        final_gff = f"{species_abbreviation}.v2.gff"
+    params:
+        volume_name = volume_name
+    shell:
+        """
+        printf "#gff-version 3\n" > {output.exclude_gff}
+        docker run -v {params.volume_name}:/data python sh -c "pip install gff3 && python /data/gff_filter.py -e /data/{input.exclude_list} -g /data/{global_gff} >> /data/{output.exclude_gff}"
+        docker run -v {params.volume_name}:/data dantestpy sh -c "python /data/validate_gff.py --gff /data/{output.exclude_gff} > {output.uniq_gff}"
+        docker run -v {params.volume_name}:/data dantestpy sh -c "python /data/renameGff.py -g /data/{output.uniq_gff} -t /data/{species_abbreviation} > {output.final_gff}"
+        """
