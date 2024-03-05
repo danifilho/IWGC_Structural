@@ -1,11 +1,7 @@
-species_name: "file1.Col-PEK1.5_Chr1-5_20220523"
-fasta_file: "file1.Col-PEK1.5_Chr1-5_20220523.fasta"
-volume_name: "/Users/dasilvaf/Downloads/MAKER_OUTPUT"
-database_name: "{species_name}"
-repeatmodeler_output: "{volume_name}/{species_name}-families.fa"
+fasta_file: file1.Col-PEK1.5_Chr1-5_20220523.fasta
+isoseq3_reads: AraTh_Leaves_SRR14584396.fastq
 num_jobs_repeat: 4
-repeatmasker_output: "{volume_name}/{species_name}.fasta.out.gff"
-bedtools_output: "{species_name}.softmask.fasta"
-isoseq3_reads: "AraTh_Leaves_SRR14584396.fastq" #input
-pbmm2_output: "{species_name}-aligned.bam"
-isoseq3_output: "{species_name}.collapsed.gff"
+protein_file: Canola.PROTEINS.faa
+species_name: "file1.Col-PEK1.5_Chr1-5_20220523"
+volume_name: /Users/dasilvaf/Documents/snakemake_test_J
+species_abbreviation: "AraTh"
