@@ -91,7 +91,9 @@ rule maker:
 
 rule create_global_gff:
     input:
-        expand("{volume_name}/{chr}/maker_done", chr=chr, volume_name=config["volume_name"])
+        expand("{volume_name}/{chr}/maker_done", 
+        chr=chr, 
+        volume_name=config["volume_name"])
     output:
         global_gff =f"{config['species_abbreviation']}.v01.gff"
     shell:
@@ -106,12 +108,13 @@ rule extract_proteins_and_index:
     output:
         prots_fai = f"{config['species_abbreviation']}.prots.fai"
     params:
+        fasta_file=config["fasta_file"],
         volume_name = config['volume_name'],
         species_abbreviation = config['species_abbreviation']
     shell:
         """
-        docker run -v {params.volume_name}:/data biodepot/gffread gffread -S -y "/data/{species_abbreviation}.prots" -g "/data/{fasta_file}" "/data/{species_abbreviation}.v01.gff"
-        docker run -v {params.volume_name}:/data dbest/samtools:v1.19.2 samtools faidx "/data/{species_abbreviation}.prots"
+        docker run -v {params.volume_name}:/data biodepot/gffread gffread -S -y "/data/{params.species_abbreviation}.prots" -g "/data/{params.fasta_file}" "/data/{input.global_gff}"
+        docker run -v {params.volume_name}:/data dbest/samtools:v1.19.2 samtools faidx "/data/{params.species_abbreviation}.prots"
         """
 
 rule find_and_process_smallest_value:
@@ -123,7 +126,6 @@ rule find_and_process_smallest_value:
         """
         sort -k2 -n {input.prots_fai} > sorted_prots.fai
         MENOR_VALOR=$(sort -r -k2 -n {input.prots_fai} | cut -f -2 | grep "est2genome" | tail -n 1 | cut -f2)
-        echo "$MENOR_VALOR"
         sort -k2 -n {input.prots_fai} | cut -f -2 | grep protein2genome | awk -v minor="$MENOR_VALOR" '{{if ($2 < minor) print $1}}' | sed 's/-mRNA-[0-9]*//' | sort | uniq > exclude.list
         rm sorted_prots.fai
         """
@@ -137,11 +139,13 @@ rule process_script:
         uniq_gff = f"{config['species_abbreviation']}.uniq.gff",
         final_gff = f"{config['species_abbreviation']}.v2.gff"
     params:
-        volume_name = config["volume_name"]
+        volume_name = config["volume_name"],
+        global_gff = f"{config['species_abbreviation']}.v01.gff",
+        species_abbreviation = config['species_abbreviation']
     shell:
         """
         printf "#gff-version 3\n" > {output.exclude_gff}
-        docker run -v {params.volume_name}:/data python sh -c "pip install gff3 && python /data/gff_filter.py -e /data/{input.exclude_list} -g /data/{global_gff} >> /data/{output.exclude_gff}"
-        docker run -v {params.volume_name}:/data dantestpy sh -c "python /data/validate_gff.py --gff /data/{output.exclude_gff} > {output.uniq_gff}"
-        docker run -v {params.volume_name}:/data dantestpy sh -c "python /data/renameGff.py -g /data/{output.uniq_gff} -t /data/{species_abbreviation} > {output.final_gff}"
+        docker run -v {params.volume_name}:/data python sh -c "pip install gff3 && python /data/gff_filter.py -e /data/{input.exclude_list} -g /data/{params.global_gff} >> /data/{output.exclude_gff}"
+        docker run -v {params.volume_name}:/data dantestpy1 sh -c "python /data/validate_gff.py --gff /data/{output.exclude_gff} > {output.uniq_gff}"
+        docker run -v {params.volume_name}:/data dantestpy2 sh -c "python /data/renameGff.py -g /data/{output.uniq_gff} -t /data/{params.species_abbreviation} > {output.final_gff}"
         """
