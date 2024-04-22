@@ -15,14 +15,12 @@ awk '{print > ("maker_outputs/" $1 ".gff")}' "$isoseq3_output"
 for chr in $(cat maker_outputs/chrs.list)
 do
     mkdir -p "maker_outputs/${chr}/tmp"
-    fasta="${PWD}/maker_outputs/${chr}/${chr}.fasta"
-    docker run -v $volume_name:/data --read-only=false -w "/data" dbest/samtools:v1.19.2 samtools faidx "${fasta_file}" "${chr}" > "${fasta}"   
-    transcripts="/data/maker_outputs/${chr}/${chr}_transcripts.fa"
-    docker run -v $volume_name:/data --read-only=false -w "/data" biodepot/gffread gffread -g "${fasta_file}" -w $transcripts maker_outputs/$chr.gff
+    singularity exec -B $volume_name:/data $volume_name/images/samtools.sif /bin/bash -c "cd /data && samtools faidx /data/$fasta_file \"${chr}\" > /data/maker_outputs/${chr}/${chr}.fasta"
+    singularity exec -B $volume_name:/data $volume_name/images/gffread.sif sh -c "cd /data && gffread -g /data/$fasta_file -w /data/maker_outputs/${chr}/${chr}_transcripts.fa /data/maker_outputs/$chr.gff"
     if [ -f "$fasta_file.fai" ]; then rm "$fasta_file.fai"; fi
 
 # Creating the maker control files
-    printf "\
+printf "\
 #-----BLAST and Exonerate Statistics Thresholds
 blast_type=ncbi+ #set to 'ncbi+', 'ncbi' or 'wublast'
 use_rapsearch=0 #use rapsearch instead of blastx, 1 = yes, 0 = no
@@ -166,7 +164,7 @@ probuild= #location of probuild executable (required for genemark)
 
 printf "\
 #-----Genome (these are always required)
-genome="/data/maker_outputs/${chr}/${chr}.fasta" #genome sequence (fasta file or fasta embeded in GFF3 file)
+genome="${volume_name}/maker_outputs/${chr}/${chr}.fasta" #genome sequence (fasta file or fasta embeded in GFF3 file)
 organism_type=eukaryotic #eukaryotic or prokaryotic. Default is eukaryotic
 
 #-----Re-annotation Using MAKER Derived GFF3
@@ -180,18 +178,18 @@ pred_pass=0 #use ab-initio predictions in maker_gff: 1 = yes, 0 = no
 other_pass=0 #passthrough anyything else in maker_gff: 1 = yes, 0 = no
 
 #-----EST Evidence (for best results provide a file for at least one)
-est="/data/maker_outputs/${chr}/${chr}_transcripts.fa" #set of ESTs or assembled mRNA-seq in fasta format
+est="${volume_name}/maker_outputs/${chr}/${chr}_transcripts.fa" #set of ESTs or assembled mRNA-seq in fasta format
 altest= #EST/cDNA sequence file in fasta format from an alternate organism
 est_gff= #aligned ESTs or mRNA-seq from an external GFF3 file
 altest_gff= #aligned ESTs from a closly relate species in GFF3 format
 
 #-----Protein Homology Evidence (for best results provide a file for at least one)
-protein="/data/${protein_file}" #protein sequence file in fasta format (i.e. from mutiple organisms)
+protein="${volume_name}/${protein_file}" #protein sequence file in fasta format (i.e. from mutiple organisms)
 protein_gff=  #aligned protein homology evidence from an external GFF3 file
 
 #-----Repeat Masking (leave values blank to skip repeat masking)
 model_org= #select a model organism for RepBase masking in RepeatMasker
-rmlib="/data/${repeatmodeler_output}" #provide an organism specific repeat library in fasta format for RepeatMasker
+rmlib="${volume_name}/${repeatmodeler_output}" #provide an organism specific repeat library in fasta format for RepeatMasker
 repeat_protein=/app/maker-master/data/te_proteins.fasta #provide a fasta file of transposable element proteins for RepeatRunner
 rm_gff= #pre-identified repeat elements from an external GFF3 file
 prok_rm=0 #forces MAKER to repeatmask prokaryotes (no reason to change this), 1 = yes, 0 = no
@@ -242,7 +240,7 @@ correct_est_fusion=0 #limits use of ESTs in annotation to avoid fusion genes
 tries=2 #number of times to try a contig if there is a failure for some reason
 clean_try=0 #remove all data from previous run before retrying, 1 = yes, 0 = no
 clean_up=0 #removes theVoid directory with individual analysis files, 1 = yes, 0 = no
-TMP="/data/maker_outputs/${chr}/tmp"#specify a directory other than the system default temporary directory for temporary files
+TMP="${volume_name}/maker_outputs/${chr}/tmp"#specify a directory other than the system default temporary directory for temporary files
 " >maker_outputs/${chr}/maker_opts.ctl
 
 done
