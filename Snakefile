@@ -1,4 +1,3 @@
-# Snakemake file: Snakefile
 configfile: "config.yaml"
 
 # Create a list of chromosomes from the fasta file
@@ -16,7 +15,7 @@ else:
 # Define the final output expected and the end of the pipeline
 rule all:
     input:
-        expand(f"filtering_outputs/{config['species_abbreviation']}.v2.gff")
+	    expand(f"filtering_outputs/{config['species_abbreviation']}.v2.gff")
 
 # Create the database and identify repeated DNA elements in the genome
 rule repeatmodeler:
@@ -26,11 +25,13 @@ rule repeatmodeler:
         repeatmodeler_output=f"repeat_modeler_outputs/{species_name}-families.fa"
     params:
         volume_name=config["volume_name"],
-        num_jobs_repeat=config["num_jobs_repeat"],
+        repeatmodeler_threads=config["repeatmodeler_threads"],
         database_name=f"{species_name}"
+    singularity:
+        "images/dfam_tetools.sif"
     shell:
-        "docker run -v \"{params.volume_name}\":/data dfam/tetools:latest BuildDatabase -name /data/repeat_modeler_outputs/{params.database_name} /data/{input.fasta_file} && "
-        "docker run -v \"{params.volume_name}/repeat_modeler_outputs\":/data dfam/tetools:latest RepeatModeler -database /data/{params.database_name} -threads {params.num_jobs_repeat} -LTRStruct"
+        "BuildDatabase -name {params.volume_name}/repeat_modeler_outputs/{params.database_name} {params.volume_name}/{input.fasta_file} && "
+        "RepeatModeler -database {params.volume_name}/repeat_modeler_outputs/{params.database_name} -threads {params.repeatmodeler_threads} -LTRStruct"
 
 # Mask repetitive sequences
 rule repeatmasker:
@@ -42,8 +43,10 @@ rule repeatmasker:
     params:
         volume_name=f"{config['volume_name']}",
         repeatmasker_threads=config["repeatmasker_threads"]
+    singularity:
+        "images/dfam_tetools.sif"
     shell:
-        "docker run -v \"{params.volume_name}\":/data dfam/tetools:latest RepeatMasker -gff -a -pa {params.repeatmasker_threads} -u /data/repeat_modeler_output/{input.repeatmodeler_output} /data/{input.fasta_file} -dir /data/repeat_masker_outputs"
+        "RepeatMasker -gff -a -pa {params.repeatmasker_threads} -u {params.volume_name}/repeat_modeler_output/{input.repeatmodeler_output} {params.volume_name}/{input.fasta_file} -dir {params.volume_name}/repeat_masker_outputs"
 
 # Perform softmasking in repetitive sequences
 rule bedtools:
@@ -54,10 +57,12 @@ rule bedtools:
         bedtools_output=f"bedtools_outputs/{species_name}.softmask.fasta"
     params:
         volume_name=config["volume_name"]
+    singularity:
+        "images/bedtools.sif"    
     shell:
-        "docker run -v \"{params.volume_name}\":/data pegi3s/bedtools:latest bedtools maskfasta -fi /data/{input.fasta_file} -bed /data/{input.repeatmasker_output} -soft -fo /data/{output.bedtools_output}"
+        "bedtools maskfasta -fi {params.volume_name}/{input.fasta_file} -bed {params.volume_name}/{input.repeatmasker_output} -soft -fo {params.volume_name}/{output.bedtools_output}"
 
-# Align the isose reads with the masked genome
+# Align the isoseq reads with the masked genome
 rule pbmm2:
     input:
         isoseq3_reads=f"inputs/{config['isoseq3_reads']}",
@@ -67,8 +72,10 @@ rule pbmm2:
     params:
         volume_name=config["volume_name"],
         pbmm2_threads=config["pbmm2_threads"]
+    singularity:
+        "images/greensii_isoseq3.sif"
     shell:
-        "docker run -v \"{params.volume_name}\":/data greensii/isoseq3 pbmm2 align --preset ISOSEQ -O6,24 -B4 --sort /data/{input.isoseq3_reads} /data/{input.bedtools_output} /data/{output.pbmm2_output} -j {params.pbmm2_threads}"
+        "pbmm2 align --preset ISOSEQ -O6,24 -B4 --sort {params.volume_name}/{input.isoseq3_reads} {params.volume_name}/{input.bedtools_output} {params.volume_name}/{output.pbmm2_output} -j {params.pbmm2_threads}"
 
 # Collapse redundant transcrips from the pbmm2 outputs
 rule isoseq3:
@@ -80,8 +87,10 @@ rule isoseq3:
         volume_name=config["volume_name"],
         isoseq3_min_coverage=config["isoseq3_min_coverage"],
         isoseq3_min_identity=config["isoseq3_min_identity"]
+    singularity:
+        "images/greensii_isoseq3.sif"    
     shell:
-        "docker run -v \"{params.volume_name}\":/data greensii/isoseq3 isoseq3 collapse --do-not-collapse-extra-5exons --min-aln-coverage {params.isoseq3_min_coverage} --min-aln-identity {params.isoseq3_min_identity} /data/{input.pbmm2_output} /data/{output}"
+        "isoseq3 collapse --do-not-collapse-extra-5exons --min-aln-coverage {params.isoseq3_min_coverage} --min-aln-identity {params.isoseq3_min_identity} {params.volume_name}/{input.pbmm2_output} {params.volume_name}/{output}"
 
 # Create maker control files which are the inputs for maker
 rule maker_control_files:
@@ -96,7 +105,7 @@ rule maker_control_files:
         repeatmodeler_output=f"repeat_modeler_outputs/{species_name}-families.fa",
         volume_name=config["volume_name"]
     shell:
-        "bash {params.volume_name}/scripts/maker_control_files {params.fasta_file} {params.isoseq3_output} {params.protein_file} {params.repeatmodeler_output} {params.volume_name} > {output.chrs_list}"
+        "bash {params.volume_name}/scripts/maker_control_files {params.fasta_file} {params.isoseq3_output} {params.protein_file} {params.repeatmodeler_output} {params.volume_name}"
 
 # Create genome annotations 
 rule maker:
@@ -104,9 +113,10 @@ rule maker:
         done = rules.maker_control_files.output
     output:
         done = touch("maker_outputs/{chr}/maker_done")
+    singularity:
+        "images/maker.sif"
     shell:
-        "docker run -v {config[volume_name]}:/data danifilho/danifilho:latest /bin/bash -c 'cd /data/maker_outputs/{wildcards.chr} && maker /data/maker_outputs/{wildcards.chr}/maker_opts.ctl /data/maker_outputs/{wildcards.chr}/maker_bopts.ctl /data/maker_outputs/{wildcards.chr}/maker_exe.ctl'"
-
+        "/bin/bash -c 'cd {config[volume_name]}/maker_outputs/{wildcards.chr} && maker {config[volume_name]}/maker_outputs/{wildcards.chr}/maker_opts.ctl {config[volume_name]}/maker_outputs/{wildcards.chr}/maker_bopts.ctl {config[volume_name]}/maker_outputs/{wildcards.chr}/maker_exe.ctl'"
 
 # Creates a global GFF file by concatenating all the individual GFF files generated by MAKER for each chromosome. Filters for only gene, CDS, mRNA, exon, UTR, and tRNA features.
 rule create_global_gff:
@@ -132,8 +142,8 @@ rule extract_proteins_and_index:
         species_abbreviation = config['species_abbreviation']
     shell:
         """
-        docker run -v {params.volume_name}:/data biodepot/gffread gffread -S -y "/data/filtering_outputs/{params.species_abbreviation}.prots" -g "/data/{params.fasta_file}" "/data/{input.global_gff}"
-        docker run -v {params.volume_name}:/data dbest/samtools:v1.19.2 samtools faidx "/data/filtering_outputs/{params.species_abbreviation}.prots"
+        singularity exec -B {params.volume_name}:/data {params.volume_name}/images/gffread.sif /bin/bash -c "cd /data && gffread -S -y /data/filtering_outputs/{params.species_abbreviation}.prots -g /data/{params.fasta_file} /data/{input.global_gff}"
+        singularity exec -B {params.volume_name}:/data {params.volume_name}/images/samtools.sif /bin/bash -c "cd /data && samtools faidx /data/filtering_outputs/{params.species_abbreviation}.prots"
         """
 
 # Finds the smallest protein length value in the protein FASTA index. Uses this value to generate a list of protein IDs below this threshold to exclude.
@@ -166,7 +176,7 @@ rule process_script:
     shell:
         """
         printf "#gff-version 3\n" > {output.exclude_gff}
-        docker run -v {params.volume_name}:/data python sh -c "pip install gff3 && python /data/scripts/gff_filter.py -e /data/{input.exclude_list} -g /data/{params.global_gff} >> /data/{output.exclude_gff}"
-        docker run -v {params.volume_name}:/data dantestpy1 sh -c "python /data/scripts/validate_gff.py --gff /data/{output.exclude_gff} > {output.uniq_gff}"
-        docker run -v {params.volume_name}:/data dantestpy2 sh -c "python /data/scripts/renameGff.py -g /data/{output.uniq_gff} -t /data/{params.species_abbreviation} > {output.final_gff}"
+        singularity exec -B {params.volume_name}:/data {params.volume_name}/images/python.sif /bin/bash -c "cd /data && pip install gff3 && python /data/scripts/gff_filter.py -e /data/{input.exclude_list} -g /data/{params.global_gff} >> /data/{output.exclude_gff}"
+        singularity exec -B {params.volume_name}:/data {params.volume_name}/images/validate_gff.sif /bin/bash -c "cd /data && python /data/scripts/validate_gff.py --gff /data/{output.exclude_gff} > {output.uniq_gff}"
+        singularity exec -B {params.volume_name}:/data {params.volume_name}/images/rename_gff.sif /bin/bash -c "cd /data && python /data/scripts/renameGff.py -g /data/{output.uniq_gff} -t /data/{params.species_abbreviation} > {output.final_gff}"
         """
