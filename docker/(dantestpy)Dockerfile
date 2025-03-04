@@ -1,6 +1,0 @@
-FROM python:latest
-
-WORKDIR /data
-
-# Install required modules
-RUN pip install BCBio-GFF gffutils gff3
