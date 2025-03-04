@@ -43,19 +43,25 @@ Basically, to run the structural annotation step you need:
 
 ## Configuration
 
-Create a `config.yaml` file in the root directory with the following content:
+Create a `config.yaml` file in the root directory with the following content (example), or copy from this github:
 
 ```yaml
-species_name: "your_species_name"
-volume_name: "/absolute/path/to/your/working/directory"
-fasta_file: "genome.fasta"
-final_filtering_gff: "annotations.gff"
-multiloc_script: "multiloc_script.py"
-mmseqs_databases:
-  - name: "database1"
-    path: "/absolute/path/to/databases/database1"
-  - name: "ncbi"
-    path: "/absolute/path/to/ncbi_data_file.prot"
+fasta_file: chromosome_1.fasta
+isoseq3_reads: SRR28834784.fastq
+protein_file: protein.faa
+volume_name: /mnt/ufs18/rs-028/Weed_lab/software/testing/IWGC_annotation/structural
+species_abbreviation: BetVu
+
+#REPEATING PARAMS
+repeatmodeler_threads: 90
+repeatmasker_threads: 90
+
+#ISOSEQ3 PARAMS
+isoseq3_min_coverage: 0.9
+isoseq3_min_identity: 0.95
+
+#PBMM2 PARAMS
+pbmm2_threads: 40
 ```
 
 ## Dependencies
