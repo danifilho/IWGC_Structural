@@ -66,10 +66,6 @@ snakemake --cores <number_of_cores> --use-singularity
 (LICENSE)
 
 ## Contact
-dasilvaf@msu.edu
 
-For any questions or issues, please contact:
-
-- **idk yet what to put here**
-- **Email**: email@example.com
-- **GitHub**: [username](https://github.com/username)
+- **Email**: dasilvaf@msu.edu
+- **GitHub**: [danifilho](https://github.com/danifilho)
