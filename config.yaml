@@ -1,13 +1,16 @@
-fasta_file: Arabidopsis_Thaliana_Chr1.fasta
-isoseq3_reads: AraTh_Leaves_SRR14584396.fastq
-protein_file: Canola.PROTEINS.faa
-volume_name: /Users/danifilho01/Downloads/Final
-species_abbreviation: AraTh
+fasta_file: chromosome_1.fasta
+isoseq3_reads: SRR28834784.fastq
+protein_file: protein.faa
+volume_name: /mnt/ufs18/rs-028/Weed_lab/software/testing/IWGC_annotation/structural
+species_abbreviation: BetVu
 
 #REPEATING PARAMS
-repeatmodeler_threads: 4
-repeatmasker_threads: 4
+repeatmodeler_threads: 90
+repeatmasker_threads: 90
 
 #ISOSEQ3 PARAMS
 isoseq3_min_coverage: 0.9
 isoseq3_min_identity: 0.95
+
+#PBMM2 PARAMS
+pbmm2_threads: 40
