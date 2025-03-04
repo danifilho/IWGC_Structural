@@ -4,6 +4,7 @@
 
 - [Prerequisites](#prerequisites)
 - [Setup](#setup)
+- [Configuration](#configuration)
 - [Dependencies](#dependencies)
 - [Usage](#usage)
 - [License](#license)
@@ -38,7 +39,24 @@ Basically, to run the structural annotation step you need:
 - One Snakefile
 - One "inputs" folder, with the genome in .fasta format, the .faa protein file and SMRT Pacbio RNA reads (usually .fastq)
 - One "scripts" folder, with the following scripts: maker_control_files, validate_gff.py, renameGff.py, and gff_filter.py
-- One "images" folder, with all the above singularity images. 
+- One "images" folder, with all the above singularity images.
+
+## Configuration
+
+Create a `config.yaml` file in the root directory with the following content:
+
+```yaml
+species_name: "your_species_name"
+volume_name: "/absolute/path/to/your/working/directory"
+fasta_file: "genome.fasta"
+final_filtering_gff: "annotations.gff"
+multiloc_script: "multiloc_script.py"
+mmseqs_databases:
+  - name: "database1"
+    path: "/absolute/path/to/databases/database1"
+  - name: "ncbi"
+    path: "/absolute/path/to/ncbi_data_file.prot"
+```
 
 ## Dependencies
 
@@ -51,7 +69,7 @@ Basically, to run the structural annotation step you need:
 
 - **biopython**
 
-### Running the Pipeline
+## Usage
 
 ```bash
 snakemake --cores <number_of_cores> --use-singularity
