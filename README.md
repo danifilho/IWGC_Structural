@@ -3,7 +3,7 @@
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
-- [Installation](#installation)
+- [Setup](#setup)
 - [Dependencies](#dependencies)
 - [Usage](#usage)
 - [License](#license)
@@ -31,7 +31,7 @@ singularity pull samtools.sif library://danifilho/functional_annotation_images/s
 singularity pull dfma_tetools.sif docker://dfam/tetools 
 ```
 
-## Installation
+## Setup
 
 Basically, to run the structural annotation step you need:
 - One config.yaml file, with your variables and inputs
@@ -39,11 +39,6 @@ Basically, to run the structural annotation step you need:
 - One "inputs" folder, with the genome in .fasta format, the .faa protein file and SMRT Pacbio RNA reads (usually .fastq)
 - One "scripts" folder, with the following scripts: maker_control_files, validate_gff.py, renameGff.py, and gff_filter.py
 - One "images" folder, with all the above singularity images. 
-
-
-4. **Ensure Singularity is installed**:
-
-   - Install Singularity following the official [Singularity Installation Guide](https://sylabs.io/guides/3.0/user-guide/installation.html).
 
 ## Dependencies
 
