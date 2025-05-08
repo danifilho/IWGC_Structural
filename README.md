@@ -15,7 +15,7 @@
 
 - **Python**: Version 3.6 or higher
 - **Snakemake**: Workflow management system
-- **Singularity**: Containerization platform
+- **SingularityCE**: Containerization platform (CE version works better with docker/singularity)
 
 ### Singularity Images
 
