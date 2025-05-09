@@ -29,7 +29,7 @@ singularity pull maker.sif library://danifilho/structural_annotation/maker:sha25
 singularity pull greensii_isoseq3.sif docker://greensii/isoseq3
 singularity pull bedtools.sif library://danifilho/structural_annotation/bedtools:sha256.2a0840734f789467ee1a2357a55fd23db4c4eac8ee41adb39902900ed45ca07a
 singularity pull samtools.sif library://danifilho/functional_annotation_images/samtools:sha256.756b3e649207b774365c7e35edcbe106b644e345baeb3f2aee77285e1a4799be
-singularity pull dfma_tetools.sif docker://dfam/tetools 
+singularity pull dfam_tetools.sif docker://dfam/tetools 
 ```
 
 ## Setup
