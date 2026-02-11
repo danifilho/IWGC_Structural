@@ -87,9 +87,6 @@ pbmm2_threads: 40
 ```bash
 snakemake --cores <number_of_cores> --use-singularity
 ```
-## License
-
-(LICENSE)
 
 ## Contact
 
