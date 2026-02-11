@@ -22,14 +22,21 @@
 The necessary `.sif` Singularity images are hosted on [Sylabs Cloud](https://cloud.sylabs.io/library/danifilho/functional_annotation_images). You can download them using the following commands:
 
 ```bash
-singularity pull validate_gff.sif library://danifilho/structural_annotation/validate_gff:sha256.e438afcf3e0e3c3e892adeb8bc85fa04d93c6616031780cc80e4e6177f99d4cf
-singularity pull gffread.sif library://danifilho/structural_annotation/rename_gff:sha256.98c0b56f2adef78a924496d9611a1ed56399d1a4fa0f213e077c4d6d65f5d9dc 
-singularity pull python.sif library://danifilho/structural_annotation/custom_python:sha256.1a24456dca10a0b791d929fec50a7db0d768a9e340b31f0134d2053a2e160cd1
-singularity pull maker.sif library://danifilho/structural_annotation/maker:sha256.60d7f06b2d2cc97fd764b5002d9873dd14b1eacbf6f58645515e47416ee5828b
-singularity pull greensii_isoseq3.sif docker://greensii/isoseq3
-singularity pull bedtools.sif library://danifilho/structural_annotation/bedtools:sha256.2a0840734f789467ee1a2357a55fd23db4c4eac8ee41adb39902900ed45ca07a
-singularity pull samtools.sif library://danifilho/functional_annotation_images/samtools:sha256.756b3e649207b774365c7e35edcbe106b644e345baeb3f2aee77285e1a4799be
-singularity pull dfam_tetools.sif docker://dfam/tetools 
+# Structural annotation images (Sylabs Library - unsigned => use -U)
+singularity pull -U -F validate_gff.sif  library://danifilho/structural_annotation/validate_gff:latest
+singularity pull -U -F rename_gff.sif    library://danifilho/structural_annotation/rename_gff:latest
+singularity pull -U -F python.sif        library://danifilho/structural_annotation/custom_python:latest
+singularity pull -U -F maker.sif         library://danifilho/structural_annotation/maker:latest
+singularity pull -U -F bedtools.sif      library://danifilho/structural_annotation/bedtools:latest
+
+# IsoSeq3 (Docker registry)
+singularity pull -F greensii_isoseq3.sif docker://greensii/isoseq3
+
+# Functional annotation images (Sylabs Library - unsigned => use -U)
+singularity pull -U -F samtools.sif      library://danifilho/functional_annotation_images/samtools:latest
+
+# TE tools (Docker registry)
+singularity pull -F dfam_tetools.sif     docker://dfam/tetools
 ```
 
 ## Setup
