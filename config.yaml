@@ -1,0 +1,16 @@
+fasta_file: Bvulgaris_548_EL10_1.0.fasta
+isoseq3_reads: Bvulgaris_548_EL10_1.0.gene.gff3
+protein_file: protein.faa
+volume_name: /mnt/gs21/scratch/dasilvaf/IWGC_annotation/structural
+species_abbreviation: ConAr
+
+#REPEATING PARAMS
+repeatmodeler_threads: 55
+repeatmasker_threads: 55
+
+#ISOSEQ3 PARAMS
+isoseq3_min_coverage: 0.9
+isoseq3_min_identity: 0.95
+
+#PBMM2 PARAMS
+pbmm2_threads: 8
